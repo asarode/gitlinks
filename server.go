@@ -9,16 +9,17 @@ import (
 	"gopkg.in/gorp.v1"
 	"log"
 	"net/http"
+	"os"
 	"time"
 )
 
 func main() {
 	mainRouter := mux.NewRouter()
-	v1 := mainRouter.PathPrefix("api/v1").SubRouter()
+	v1 := mainRouter.PathPrefix("api/v1").Subrouter()
 
-	v1.HandleFunc("/{username}/projects", readProjects).Methods("GET")
-	v1.HandleFunc("{username}/projects", createProjects).Methods("POST")
-	v1.HandleFunc("/{username}/projects", updateProjects).Methods("PUT")
+	v1.HandleFunc("/{username}/projects", handleReadProjects).Methods("GET")
+	v1.HandleFunc("{username}/projects", handleCreateProjects).Methods("POST")
+	v1.HandleFunc("/{username}/projects", handleUpdateProjects).Methods("PUT")
 
 	// Initialize the DB map
 	dbmap := initDb()
@@ -42,14 +43,14 @@ type Project struct {
 	Summary string `db:"summary"`
 }
 
-func newUser(username) User {
+func newUser(username string) User {
 	return User{
 		Created:  time.Now().UnixNano(),
 		Username: username,
 	}
 }
 
-func newProject(owner, repoUri, summary) Project {
+func newProject(owner int64, repoUri string, summary string) Project {
 	return Project{
 		Owner:   owner,
 		RepoUri: repoUri,
@@ -58,8 +59,9 @@ func newProject(owner, repoUri, summary) Project {
 }
 
 func handleReadProjects(res http.ResponseWriter, req *http.Request) {
-	vars = mux.Vars(req)
-	username = vars["username"]
+	vars := mux.Vars(req)
+	username := vars["username"]
+	fmt.Println(username)
 }
 
 func handleCreateProjects(res http.ResponseWriter, req *http.Request) {
@@ -85,8 +87,10 @@ func initDb() *gorp.DbMap {
 	dbmap.AddTableWithName(User{}, "users")
 	dbmap.AddTableWithName(Project{}, "projects")
 
-	err = dbmap.CreateTabledIfNotExists()
+	err = dbmap.CreateTablesIfNotExists()
 	checkError(err, "Create tables failed")
+
+	return dbmap
 }
 
 func checkError(err error, msg string) {
